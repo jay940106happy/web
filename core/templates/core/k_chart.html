@@ -117,8 +117,8 @@
         line: { color: "#26e27a", width: 1 },
         fillcolor: "#26e27a",
       },
-      width: 0.9,        // 蠟燭變胖，減少空隙
-      whiskerwidth: 0,   // 取消上下影線末端橫線
+      width: 0.9,
+      whiskerwidth: 0,
     };
 
     // ===== 成交量（同樣紅漲綠跌） =====
@@ -168,13 +168,8 @@
       xaxis: {
         type: "date",
         range: initialRange,
-
-        // ★★ 這行最重要：把「沒有交易的所有日期」整個剪掉，所以不會留下空格 ★★
         rangebreaks: missingDates.length ? [{ values: missingDates }] : [],
-
-        // 關掉底下那條小圖
         rangeslider: { visible: false },
-
         rangeselector: {
           buttons: [
             { count: 3,  label: "3M", step: "month", stepmode: "backward" },
@@ -227,6 +222,7 @@
       return [start, end];
     }
 
+    // 價格 y 軸
     function calcYRange(xRange) {
       const [start, end] = xRange;
       let min = Infinity;
@@ -248,17 +244,37 @@
       return [min - padding, max + padding];
     }
 
+    // ✅ 新增：成交量 y2 軸（只看目前畫面範圍內的最大量）
+    function calcVolRange(xRange) {
+      const [start, end] = xRange;
+      let maxVol = 0;
+
+      for (let i = 0; i < dates.length; i++) {
+        const d = dates[i];
+        if (d >= start && d <= end) {
+          if (volume[i] > maxVol) maxVol = volume[i];
+        }
+      }
+
+      if (maxVol <= 0) return null;
+
+      return [0, maxVol * 1.2]; // 往上留 20% 空間
+    }
+
     let internalUpdate = false;
 
     Plotly.newPlot("kchart", [candle, volUpTrace, volDownTrace], layout, config)
       .then(() => {
         const initClamped = clampRange(initialRange);
-        const initY = calcYRange(initClamped);
-        if (initY) {
+        const initY  = calcYRange(initClamped);
+        const initV2 = calcVolRange(initClamped);
+
+        if (initY && initV2) {
           internalUpdate = true;
           Plotly.relayout("kchart", {
             "xaxis.range": initClamped,
             "yaxis.range": initY,
+            "yaxis2.range": initV2,
           }).then(() => { internalUpdate = false; });
         }
 
@@ -282,17 +298,20 @@
 
           const clamped = clampRange(newRange);
           const yRange  = calcYRange(clamped);
-          if (!yRange) return;
+          const v2Range = calcVolRange(clamped);
+          if (!yRange || !v2Range) return;
 
           internalUpdate = true;
           Plotly.relayout("kchart", {
-            "xaxis.range": clamped,
-            "yaxis.range": yRange,
+            "xaxis.range":  clamped,
+            "yaxis.range":  yRange,
+            "yaxis2.range": v2Range,
           }).then(() => { internalUpdate = false; });
         });
       });
   }
 </script>
+
 
 
 
