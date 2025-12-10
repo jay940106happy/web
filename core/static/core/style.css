@@ -37,3 +37,58 @@ tr:last-child td {
 .down {
   color: #f97373;
 }
+.quote-header {
+  margin-top: 18px;
+  margin-bottom: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.quote-top-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.quote-top-row .symbol {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.quote-top-row .name {
+  font-size: 1.1rem;
+  opacity: 0.85;
+}
+
+.quote-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.quote-price-row .price {
+  font-size: 2.2rem;
+  font-weight: 800;
+}
+
+.quote-price-row .change {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.quote-price-row .change.up {
+  color: #ff5c5c; /* 紅漲 */
+}
+
+.quote-price-row .change.down {
+  color: #26e27a; /* 綠跌 */
+}
+
+.quote-date {
+  margin-top: 4px;
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+
