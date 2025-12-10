@@ -91,4 +91,72 @@ tr:last-child td {
   opacity: 0.7;
 }
 
+/* 手機優化：寬度小於 640px 時生效 */
+@media (max-width: 640px) {
+  body {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  h1 {
+    font-size: 1.2rem;
+    margin-bottom: 12px;
+  }
+
+  /* 讓整個區塊不要貼滿邊，也不會太寬 */
+  .page-container {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  /* 頭部資訊：上下排列，不要全部擠成一橫排 */
+  .quote-header {
+    margin-top: 12px;
+    margin-bottom: 8px;
+    padding: 8px 0;
+  }
+
+  .quote-top-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .quote-top-row .symbol {
+    font-size: 1.2rem;
+  }
+
+  .quote-top-row .name {
+    font-size: 0.95rem;
+  }
+
+  .quote-price-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .quote-price-row .price {
+    font-size: 1.6rem;
+  }
+
+  .quote-price-row .change {
+    font-size: 0.95rem;
+  }
+
+  .quote-date {
+    font-size: 0.8rem;
+  }
+
+  /* 表格縮小一點字，不要超出畫面 */
+  table {
+    max-width: 100%;
+    font-size: 13px;
+  }
+
+  th, td {
+    padding: 6px 8px;
+  }
+}
 
