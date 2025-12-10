@@ -159,4 +159,9 @@ tr:last-child td {
     padding: 6px 8px;
   }
 }
+/* 讓圖表這一塊可以接收雙指縮放、拖拉等手勢 */
+#kchart {
+  touch-action: none;
+}
+
 
