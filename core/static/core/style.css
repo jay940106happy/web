@@ -160,8 +160,10 @@ tr:last-child td {
   }
 }
 /* 讓圖表這一塊可以接收雙指縮放、拖拉等手勢 */
+/* 讓圖表這一塊可以接收雙指縮放、拖拉等手勢 */
 #kchart {
   touch-action: none;
+  -ms-touch-action: none; /* 舊版 Edge / IE 用，不影響現代瀏覽器 */
 }
 
 
