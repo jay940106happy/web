@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+{% load static %}
+<head>
+  <meta charset="UTF-8">
+  <title>我的股票小首頁</title>
+  <link rel="stylesheet" href="{% static 'core/style.css' %}">
+</head>
+<body>
+  <h1>簡易股票列表（假資料）</h1>
+  <p>這裡的資料目前是 Django 後端塞進來的測試用內容，之後會改成資料庫。</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>代號</th>
+        <th>名稱</th>
+        <th>價格</th>
+        <th>漲跌</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in stocks %}
+        <tr>
+          <td class="code">{{ s.code }}</td>
+          <td>{{ s.name }}</td>
+          <td>{{ s.price }}</td>
+          <td>
+            {% if s.change > 0 %}
+              <span class="up">▲ {{ s.change }}</span>
+            {% elif s.change < 0 %}
+              <span class="down">▼ {{ s.change }}</span>
+            {% else %}
+              {{ s.change }}
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="4">目前沒有任何股票資料。</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
