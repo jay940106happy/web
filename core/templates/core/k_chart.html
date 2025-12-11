@@ -89,7 +89,7 @@
     const minDate = dates[0];
     const maxDate = dates[dates.length - 1];
 
-    // ===== 找出「缺少的日期」全部列出來（週末＋國定假日都會被抓到） =====
+    // ===== 找出「缺少的日期」（週末＋國定假日） =====
     const dateSet = new Set(dates);
     const missingDates = [];
 
@@ -168,11 +168,12 @@
     const startIdx  = Math.max(0, dates.length - 200);
     const initialRange = [dates[startIdx], dates[lastIdx]];
 
-    const isMobile = window.innerWidth <= 768;
+    // 判斷是否為手機
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
 
     const layout = {
-      // ✅ 手機預設拖拉 = zoom，桌機才用 pan
-      dragmode: isMobile ? "zoom" : "pan",
+      // ✅ 單指 / 滑鼠拖曳 = 平移（桌機＋手機一致）
+      dragmode: "pan",
       showlegend: false,
       xaxis: {
         type: "date",
@@ -199,19 +200,19 @@
         title: "成交量",
         fixedrange: true,
       },
-      margin: { t: 30, r: 20, b: 40, l: 50 },
+      margin: isMobile
+        ? { t: 24, r: 12, b: 40, l: 48 }
+        : { t: 30, r: 20, b: 40, l: 60 },
     };
 
     const config = {
       responsive: true,
-      scrollZoom: true,
+      // ✅ 桌機：啟用 scrollZoom；手機關掉避免跟頁面捲動打架
+      scrollZoom: !isMobile,
       displaylogo: false,
+      displayModeBar: true,
+      // 保留 zoom / autoscale，只砍掉比較少用的工具
       modeBarButtonsToRemove: [
-        "zoom2d",
-        "zoomIn2d",
-        "zoomOut2d",
-        "autoScale2d",
-        "resetScale2d",
         "lasso2d",
         "select2d",
         "toggleSpikelines",
@@ -253,7 +254,7 @@
       return [min - padding, max + padding];
     }
 
-    // ✅ 新增：成交量 y2 軸（只看目前畫面範圍內的最大量）
+    // 成交量 y2 軸（只看目前畫面範圍內的最大量）
     function calcVolRange(xRange) {
       const [start, end] = xRange;
       let maxVol = 0;
@@ -320,6 +321,7 @@
       });
   }
 </script>
+
 
 
 
