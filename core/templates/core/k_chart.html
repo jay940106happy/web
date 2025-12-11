@@ -3,7 +3,6 @@
 {% load static %}
 <head>
   <meta charset="UTF-8" />
-  <!-- ✅ 開放手機整頁縮放 -->
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes"
@@ -12,9 +11,8 @@
   <title>K 線圖</title>
   <link rel="stylesheet" href="{% static 'core/style.css' %}" />
 
-  <!-- ✅ 改用 TradingView Lightweight Charts（支援手機雙指縮放） -->
+  <!-- 使用 ECharts 畫 K 線＋財報圖 -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-
 </head>
 <body>
   <h1>測試 K 線圖</h1>
@@ -32,16 +30,14 @@
     <button type="submit">查詢</button>
   </form>
 
-
   {# ===== 上方專業頭部資訊（像 Yahoo 那一塊） ===== #}
   {% if company_name and last_close %}
-    {% with is_up=last_change|default:0|floatformat:4 %}
     <div class="quote-header">
-      <div class="quote-main">
+      <div class="quote-top-row">
         <span class="symbol">{{ raw_code|upper }}</span>
         <span class="name">{{ company_name }}</span>
       </div>
-      <div class="quote-price">
+      <div class="quote-price-row">
         <span class="price">{{ last_close|floatformat:2 }}</span>
         {% if last_change %}
           {% if last_change > 0 %}
@@ -67,7 +63,6 @@
         </div>
       {% endif %}
     </div>
-    {% endwith %}
   {% endif %}
 
   {% if error %}
@@ -78,164 +73,517 @@
     <h2>{{ symbol }} 日 K</h2>
     <div id="kchart" style="width: 100%; height: 600px;"></div>
 
-<script>
-  // 後端丟過來的資料：[{ date, open, high, low, close, volume }, ...]
-  const ohlc = {{ ohlc_json|default:"[]"|safe }};
+    <!-- ===== 下方：財報分析總區 ===== -->
+    <section class="fund-section">
+      <!-- Tab 按鈕 -->
+      <div class="fund-tabs">
+        <button class="fund-tab active" data-tab="snapshot">總覽</button>
+        <button class="fund-tab" data-tab="ratios">財務比率</button>
+        <button class="fund-tab" data-tab="trend">財報趨勢圖</button>
+      </div>
 
-  if (ohlc.length > 0) {
-    const container = document.getElementById("kchart");
-    const chart = echarts.init(container, null, { renderer: "canvas" });
+      <!-- Tab 內容：總覽 -->
+      <div id="tab-snapshot" class="fund-panel active">
+        <div class="fund-grid">
+          <div class="fund-card">
+            <div class="fund-card-title">公司資訊</div>
+            <table>
+              <tbody>
+                <tr>
+                  <td>產業</td>
+                  <td>{{ fund_info.sector|default:"-" }}</td>
+                </tr>
+                <tr>
+                  <td>子產業</td>
+                  <td>{{ fund_info.industry|default:"-" }}</td>
+                </tr>
+                <tr>
+                  <td>國家</td>
+                  <td>{{ fund_info.country|default:"-" }}</td>
+                </tr>
+                <tr>
+                  <td>員工數</td>
+                  <td>
+                    {% if fund_info.employees %}
+                      {{ fund_info.employees|floatformat:"0" }} 人
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td>幣別</td>
+                  <td>{{ fund_info.currency|default:"-" }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-    // ---- 整理資料給 ECharts 用 ----
-    const dates = ohlc.map(r => r.date);   // x 軸
-    const kData = ohlc.map(r => [
-      r.open,   // ECharts: [open, close, low, high]
-      r.close,
-      r.low,
-      r.high,
-    ]);
+          <div class="fund-card">
+            <div class="fund-card-title">估值指標</div>
+            <table>
+              <tbody>
+                <tr>
+                  <td>市值</td>
+                  <td>
+                    {% if fund_info.marketCap %}
+                      {{ fund_info.marketCap|floatformat:"0" }}
+                    {% else %}-{% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td>本益比 (TTM)</td>
+                  <td>{{ fund_info.trailingPE|default:"-" }}</td>
+                </tr>
+                <tr>
+                  <td>預估本益比</td>
+                  <td>{{ fund_info.forwardPE|default:"-" }}</td>
+                </tr>
+                <tr>
+                  <td>PEG</td>
+                  <td>{{ fund_info.pegRatio|default:"-" }}</td>
+                </tr>
+                <tr>
+                  <td>股價淨值比 P/B</td>
+                  <td>{{ fund_info.priceToBook|default:"-" }}</td>
+                </tr>
+                <tr>
+                  <td>Beta</td>
+                  <td>{{ fund_info.beta|default:"-" }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-    const volumeData = ohlc.map((r, idx) => {
-      const up = r.close >= r.open;
-      return {
-        value: [idx, r.volume, up ? 1 : -1], // 1 = 上漲, -1 = 下跌
-      };
-    });
+          <div class="fund-card">
+            <div class="fund-card-title">股利＆獲利能力</div>
+            <table>
+              <tbody>
+                <tr>
+                  <td>殖利率</td>
+                  <td>
+                    {% if fund_info.dividendYieldPct %}
+                      {{ fund_info.dividendYieldPct|floatformat:"2" }} %
+                    {% else %}-{% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td>盈餘配發率</td>
+                  <td>
+                    {% if fund_info.payoutRatio %}
+                      {{ fund_info.payoutRatio|floatformat:"2" }}
+                    {% else %}-{% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td>淨利率</td>
+                  <td>
+                    {% if fund_info.profitMarginsPct %}
+                      {{ fund_info.profitMarginsPct|floatformat:"2" }} %
+                    {% else %}-{% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td>營益率</td>
+                  <td>
+                    {% if fund_info.operatingMarginsPct %}
+                      {{ fund_info.operatingMarginsPct|floatformat:"2" }} %
+                    {% else %}-{% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td>ROE</td>
+                  <td>
+                    {% if fund_info.roe %}
+                      {{ fund_info.roe|floatformat:"2" }}
+                    {% else %}-{% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td>ROA</td>
+                  <td>
+                    {% if fund_info.roa %}
+                      {{ fund_info.roa|floatformat:"2" }}
+                    {% else %}-{% endif %}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-    const option = {
-      backgroundColor: "#0f172a",
-      animation: false,
-      tooltip: {
-        trigger: "axis",
-        axisPointer: {
-          type: "cross",
-          label: { backgroundColor: "#374151" }
-        }
-      },
-      axisPointer: {
-        link: [{ xAxisIndex: [0, 1] }]
-      },
-      grid: [
-        {
-          left: 50,
-          right: 20,
-          top: 40,
-          height: "58%"      // 上面 K 線
-        },
-        {
-          left: 50,
-          right: 20,
-          top: "70%",
-          height: "18%"      // 下面成交量
-        }
-      ],
-      xAxis: [
-        {
-          type: "category",
-          data: dates,
-          boundaryGap: false,
-          axisLine: { lineStyle: { color: "#4b5563" } },
-          axisLabel: { color: "#9ca3af" },
-          min: "dataMin",
-          max: "dataMax"
-        },
-        {
-          type: "category",
-          gridIndex: 1,
-          data: dates,
-          boundaryGap: false,
-          axisLine: { lineStyle: { color: "#4b5563" } },
-          axisLabel: { color: "#9ca3af" },
-          min: "dataMin",
-          max: "dataMax"
-        }
-      ],
-      yAxis: [
-        {
-          scale: true,
-          position: "right",
-          axisLine: { lineStyle: { color: "#4b5563" } },
-          axisLabel: { color: "#e5e7eb" },
-          splitLine: { lineStyle: { color: "#1f2937" } }
-        },
-        {
-          gridIndex: 1,
-          position: "right",
-          axisLine: { lineStyle: { color: "#4b5563" } },
-          axisLabel: {
-            color: "#9ca3af",
-            formatter: value => {
-              if (value >= 1e8) return (value / 1e8).toFixed(1) + "億";
-              if (value >= 1e4) return (value / 1e4).toFixed(1) + "萬";
-              return value;
+      <!-- Tab 內容：財務比率（再整理一次重要比率） -->
+      <div id="tab-ratios" class="fund-panel">
+        <div class="fund-card wide">
+          <div class="fund-card-title">財務體質 / 風險指標</div>
+          <table>
+            <tbody>
+              <tr>
+                <td style="width: 140px;">負債權益比 (D/E)</td>
+                <td>
+                  {% if fund_info.debtToEquity %}
+                    {{ fund_info.debtToEquity|floatformat:"2" }}
+                  {% else %}-{% endif %}
+                </td>
+              </tr>
+              <tr>
+                <td>營益率 (TTM)</td>
+                <td>
+                  {% if fund_info.operatingMarginsPct %}
+                    {{ fund_info.operatingMarginsPct|floatformat:"2" }} %
+                  {% else %}-{% endif %}
+                </td>
+              </tr>
+              <tr>
+                <td>淨利率 (TTM)</td>
+                <td>
+                  {% if fund_info.profitMarginsPct %}
+                    {{ fund_info.profitMarginsPct|floatformat:"2" }} %
+                  {% else %}-{% endif %}
+                </td>
+              </tr>
+              <tr>
+                <td>ROE (TTM)</td>
+                <td>
+                  {% if fund_info.roe %}
+                    {{ fund_info.roe|floatformat:"2" }}
+                  {% else %}-{% endif %}
+                </td>
+              </tr>
+              <tr>
+                <td>ROA (TTM)</td>
+                <td>
+                  {% if fund_info.roa %}
+                    {{ fund_info.roa|floatformat:"2" }}
+                  {% else %}-{% endif %}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab 內容：財報趨勢圖 -->
+      <div id="tab-trend" class="fund-panel">
+        <div class="metric-buttons">
+          <span class="metric-label">指標：</span>
+          <button class="metric-btn active" data-metric="revenue">營收</button>
+          <button class="metric-btn" data-metric="operatingIncome">營業利益</button>
+          <button class="metric-btn" data-metric="netIncome">淨利</button>
+          <button class="metric-btn" data-metric="grossMargin">毛利率 %</button>
+          <button class="metric-btn" data-metric="operatingMargin">營益率 %</button>
+          <button class="metric-btn" data-metric="netMargin">淨利率 %</button>
+          <button class="metric-btn" data-metric="operatingCashFlow">營業現金流</button>
+        </div>
+        <div id="fund-chart" style="width: 100%; height: 320px;"></div>
+      </div>
+    </section>
+
+    <script>
+      // ===== 後端資料 =====
+      const ohlc = {{ ohlc_json|default:"[]"|safe }};
+      const fundamentals = {{ fundamentals_json|default:"{}"|safe }};
+
+      // ===== 1. K 線圖 (ECharts) =====
+      if (ohlc.length > 0) {
+        const container = document.getElementById("kchart");
+        const chart = echarts.init(container, null, { renderer: "canvas" });
+
+        const dates = ohlc.map(r => r.date);
+        const kData = ohlc.map(r => [r.open, r.close, r.low, r.high]);
+        const volumeData = ohlc.map((r, idx) => {
+          const up = r.close >= r.open;
+          return { value: [idx, r.volume, up ? 1 : -1] };
+        });
+
+        const option = {
+          backgroundColor: "#0f172a",
+          animation: false,
+          tooltip: {
+            trigger: "axis",
+            axisPointer: {
+              type: "cross",
+              label: { backgroundColor: "#374151" }
             }
           },
-          splitLine: { show: false }
-        }
-      ],
-
-      // ✅ 手機雙指縮放 / 一指平移：靠 dataZoom
-      dataZoom: [
-        {
-          type: "inside",   // 內建：二指縮放 + 拖曳平移（手機 / 滑鼠都支援）
-          xAxisIndex: [0, 1],
-          minSpan: 5        // 最少顯示幾根 K 線，避免縮太誇張
-        },
-        {
-          type: "slider",   // 底下滑桿（桌機好用）
-          xAxisIndex: [0, 1],
-          height: 16,
-          bottom: 10
-        }
-      ],
-
-      series: [
-        {
-          name: "K 線",
-          type: "candlestick",
-          data: kData,
-          itemStyle: {
-            color: "#ff5c5c",          // 漲紅
-            color0: "#26e27a",         // 跌綠
-            borderColor: "#ff5c5c",
-            borderColor0: "#26e27a"
-          }
-        },
-        {
-          name: "成交量",
-          type: "bar",
-          xAxisIndex: 1,
-          yAxisIndex: 1,
-          data: volumeData,
-          itemStyle: {
-            color: params => {
-              // volumeData 的第三個值 1 / -1 決定顏色
-              return params.data.value[2] === 1 ? "#ff5c5c" : "#26e27a";
+          axisPointer: {
+            link: [{ xAxisIndex: [0, 1] }]
+          },
+          grid: [
+            { left: 50, right: 20, top: 40, height: "58%" },
+            { left: 50, right: 20, top: "70%", height: "18%" }
+          ],
+          xAxis: [
+            {
+              type: "category",
+              data: dates,
+              boundaryGap: false,
+              axisLine: { lineStyle: { color: "#4b5563" } },
+              axisLabel: { color: "#9ca3af" },
+              min: "dataMin",
+              max: "dataMax"
+            },
+            {
+              type: "category",
+              gridIndex: 1,
+              data: dates,
+              boundaryGap: false,
+              axisLine: { lineStyle: { color: "#4b5563" } },
+              axisLabel: { color: "#9ca3af" },
+              min: "dataMin",
+              max: "dataMax"
             }
-          }
+          ],
+          yAxis: [
+            {
+              scale: true,
+              position: "right",
+              axisLine: { lineStyle: { color: "#4b5563" } },
+              axisLabel: { color: "#e5e7eb" },
+              splitLine: { lineStyle: { color: "#1f2937" } }
+            },
+            {
+              gridIndex: 1,
+              position: "right",
+              axisLine: { lineStyle: { color: "#4b5563" } },
+              axisLabel: {
+                color: "#9ca3af",
+                formatter: value => {
+                  if (value >= 1e8) return (value / 1e8).toFixed(1) + "億";
+                  if (value >= 1e4) return (value / 1e4).toFixed(1) + "萬";
+                  return value;
+                }
+              },
+              splitLine: { show: false }
+            }
+          ],
+          dataZoom: [
+            {
+              type: "inside",
+              xAxisIndex: [0, 1],
+              minSpan: 5
+            },
+            {
+              type: "slider",
+              xAxisIndex: [0, 1],
+              height: 16,
+              bottom: 10
+            }
+          ],
+          series: [
+            {
+              name: "K 線",
+              type: "candlestick",
+              data: kData,
+              itemStyle: {
+                color: "#ff5c5c",
+                color0: "#26e27a",
+                borderColor: "#ff5c5c",
+                borderColor0: "#26e27a"
+              }
+            },
+            {
+              name: "成交量",
+              type: "bar",
+              xAxisIndex: 1,
+              yAxisIndex: 1,
+              data: volumeData,
+              itemStyle: {
+                color: params =>
+                  params.data.value[2] === 1 ? "#ff5c5c" : "#26e27a"
+              }
+            }
+          ]
+        };
+
+        chart.setOption(option);
+        window.addEventListener("resize", () => chart.resize());
+      }
+
+        // ===== 2. 財報趨勢圖：延後到第一次點 tab 再初始化 =====
+        let fundChart = null;          // 全域參考，之後 tab 切換 / resize 要用
+        let fundChartInited = false;   // 避免重複初始化
+
+        function initFundChart() {
+        if (fundChartInited) return;                     // 已經 init 過就不用再來一次
+        if (!fundamentals || !fundamentals.series) return;
+
+        const fundChartEl = document.getElementById("fund-chart");
+        if (!fundChartEl) return;
+
+        // ⚠️ 這裡才 init，確保 tab-trend 是顯示狀態
+        fundChart = echarts.init(fundChartEl, null, { renderer: "canvas" });
+        fundChartInited = true;
+
+        const metricNameMap = {
+            revenue: "營收",
+            operatingIncome: "營業利益",
+            netIncome: "淨利",
+            grossMargin: "毛利率 %",
+            operatingMargin: "營益率 %",
+            netMargin: "淨利率 %",
+            operatingCashFlow: "營業現金流",
+            totalAssets: "總資產",
+            totalLiabilities: "總負債",
+        };
+
+        // 數字縮寫成 萬 / 億 / 兆
+        function formatNumberAbbrev(value) {
+            const v = Number(value);
+            if (!isFinite(v)) return "-";
+            const abs = Math.abs(v);
+            if (abs >= 1e12) return (v / 1e12).toFixed(2) + "兆";
+            if (abs >= 1e8)  return (v / 1e8 ).toFixed(2) + "億";
+            if (abs >= 1e4)  return (v / 1e4 ).toFixed(2) + "萬";
+            return v.toLocaleString();
         }
-      ]
-    };
 
-    chart.setOption(option);
+        function isPercentMetric(key) {
+            return key.toLowerCase().includes("margin");
+        }
 
-    // 視窗大小變化時自動調整
-    window.addEventListener("resize", () => {
-      chart.resize();
-    });
-  }
-</script>
+        function renderMetric(key) {
+            const series = fundamentals.series[key];
+            if (!series || !series.length) {
+            fundChart.clear();
+            fundChart.setOption({
+                title: {
+                text: "此指標目前沒有資料",
+                left: "center",
+                top: "middle",
+                textStyle: { color: "#9ca3af", fontSize: 14 },
+                },
+            });
+            return;
+            }
 
+            const x = series.map((p) => p.period);
+            const y = series.map((p) => p.value);
+            const percent = isPercentMetric(key);
 
+            const option = {
+            backgroundColor: "transparent",
+            grid: {
+                left: 72,
+                right: 20,
+                top: 30,
+                bottom: 40,
+            },
+            tooltip: {
+                trigger: "axis",
+                axisPointer: { type: "line" },
+                valueFormatter: (v) => {
+                if (v == null) return "-";
+                return percent
+                    ? Number(v).toFixed(2) + "%"
+                    : formatNumberAbbrev(v);
+                },
+            },
+            xAxis: {
+                type: "category",
+                data: x,
+                axisLine: { lineStyle: { color: "#4b5563" } },
+                axisLabel: { color: "#9ca3af" },
+            },
+            yAxis: {
+                type: "value",
+                scale: true,
+                min: (v) =>
+                percent
+                    ? Math.floor(v.min - 1)
+                    : v.min > 0
+                    ? v.min * 0.9
+                    : v.min * 1.1,
+                max: (v) =>
+                percent
+                    ? Math.ceil(v.max + 1)
+                    : v.max > 0
+                    ? v.max * 1.1
+                    : v.max * 0.9,
+                axisLine: { lineStyle: { color: "#4b5563" } },
+                axisLabel: {
+                color: "#e5e7eb",
+                formatter: (value) =>
+                    percent
+                    ? Number(value).toFixed(0) + "%"
+                    : formatNumberAbbrev(value),
+                },
+                splitLine: { lineStyle: { color: "#1f2937" } },
+            },
+            series: [
+                {
+                name: metricNameMap[key] || key,
+                type: "line",
+                smooth: true,
+                showSymbol: true,
+                symbol: "circle",
+                symbolSize: 6,
+                lineStyle: { width: 2 },
+                areaStyle: { opacity: 0.08 },
+                data: y,
+                },
+            ],
+            };
 
+            fundChart.setOption(option, true);
+        }
 
+        // 預設先畫「營收」
+        renderMetric("revenue");
+
+        // 指標切換按鈕（一定要在 init 之後綁）
+        document.querySelectorAll(".metric-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+            document
+                .querySelectorAll(".metric-btn")
+                .forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            renderMetric(btn.dataset.metric);
+            });
+        });
+
+        // 視窗大小變化時，讓圖表跟著 resize
+        window.addEventListener("resize", () => {
+            if (fundChart) fundChart.resize();
+        });
+        }
+
+        // ===== 3. Tab 切換 =====
+        document.querySelectorAll(".fund-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+            const target = tab.dataset.tab;
+
+            document
+            .querySelectorAll(".fund-tab")
+            .forEach((t) => t.classList.remove("active"));
+            tab.classList.add("active");
+
+            document
+            .querySelectorAll(".fund-panel")
+            .forEach((p) => p.classList.remove("active"));
+            document.getElementById("tab-" + target).classList.add("active");
+
+            // 👉 當切到「財報趨勢圖」時，才初始化並強制 resize 一次
+            if (target === "trend") {
+            initFundChart();
+            setTimeout(() => {
+                if (fundChart) fundChart.resize();
+            }, 0);
+            }
+        });
+        });
+
+        // 如果哪天你改成預設一進來就開「財報趨勢圖」，這裡也會自動幫你 init 一次
+        const activeTab = document.querySelector(".fund-tab.active");
+        if (activeTab && activeTab.dataset.tab === "trend") {
+        initFundChart();
+        setTimeout(() => {
+            if (fundChart) fundChart.resize();
+        }, 0);
+        }
+
+    </script>
   {% endif %}
-
-
-
-
-
-
-
 </body>
 </html>

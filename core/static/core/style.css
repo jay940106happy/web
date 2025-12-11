@@ -166,4 +166,129 @@ tr:last-child td {
   -ms-touch-action: none; /* 舊版 Edge / IE 用，不影響現代瀏覽器 */
 }
 
+/* ===== 共同背景＋字體你原本的就好，下面是新增的財報樣式 ===== */
+
+.fund-section {
+  margin-top: 32px;
+  padding: 16px 0 40px;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.fund-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.fund-tab {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: transparent;
+  color: #e5e7eb;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.fund-tab.active {
+  background: linear-gradient(90deg, #0ea5e9, #22c55e);
+  border-color: transparent;
+  color: #0b1120;
+  font-weight: 600;
+}
+
+.fund-panel {
+  display: none;
+}
+
+.fund-panel.active {
+  display: block;
+}
+
+.fund-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.fund-card {
+  background: #020617;
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(30, 64, 175, 0.6);
+}
+
+.fund-card.wide {
+  grid-column: 1 / -1;
+}
+
+.fund-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #e5e7eb;
+}
+
+.fund-card table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.fund-card td {
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(30, 64, 175, 0.3);
+}
+
+.fund-card td:first-child {
+  color: #9ca3af;
+  width: 120px;
+}
+
+.fund-card tr:last-child td {
+  border-bottom: none;
+}
+
+.metric-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.metric-label {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-right: 4px;
+}
+
+.metric-btn {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: transparent;
+  color: #e5e7eb;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.metric-btn.active {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #022c22;
+  font-weight: 600;
+}
+
+/* 手機排版調整 */
+@media (max-width: 768px) {
+  .fund-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fund-card.wide {
+    grid-column: auto;
+  }
+}
 
