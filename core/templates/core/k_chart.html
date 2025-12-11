@@ -8,14 +8,14 @@
     content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes"
   />
 
-  <title>K 線圖</title>
+  <title>個股數據</title>
   <link rel="stylesheet" href="{% static 'core/style.css' %}" />
 
   <!-- 使用 ECharts 畫 K 線＋財報圖 -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 </head>
 <body>
-  <h1>測試 K 線圖</h1>
+  <h1>個股數據</h1>
 
   <form method="get" action="{% url 'k_chart' %}">
     <label>
