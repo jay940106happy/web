@@ -11,7 +11,10 @@
 
   <title>K 線圖</title>
   <link rel="stylesheet" href="{% static 'core/style.css' %}" />
-  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <!-- ✅ 改用 TradingView Lightweight Charts（支援手機雙指縮放） -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+
 </head>
 <body>
   <h1>測試 K 線圖</h1>
@@ -76,257 +79,163 @@
     <div id="kchart" style="width: 100%; height: 600px;"></div>
 
 <script>
+  // 後端丟過來的資料：[{ date, open, high, low, close, volume }, ...]
   const ohlc = {{ ohlc_json|default:"[]"|safe }};
 
   if (ohlc.length > 0) {
-    const dates  = ohlc.map(r => r.date);   // "YYYY-MM-DD"
-    const open   = ohlc.map(r => r.open);
-    const high   = ohlc.map(r => r.high);
-    const low    = ohlc.map(r => r.low);
-    const close  = ohlc.map(r => r.close);
-    const volume = ohlc.map(r => r.volume);
+    const container = document.getElementById("kchart");
+    const chart = echarts.init(container, null, { renderer: "canvas" });
 
-    const minDate = dates[0];
-    const maxDate = dates[dates.length - 1];
+    // ---- 整理資料給 ECharts 用 ----
+    const dates = ohlc.map(r => r.date);   // x 軸
+    const kData = ohlc.map(r => [
+      r.open,   // ECharts: [open, close, low, high]
+      r.close,
+      r.low,
+      r.high,
+    ]);
 
-    // ===== 找出「缺少的日期」（週末＋國定假日） =====
-    const dateSet = new Set(dates);
-    const missingDates = [];
+    const volumeData = ohlc.map((r, idx) => {
+      const up = r.close >= r.open;
+      return {
+        value: [idx, r.volume, up ? 1 : -1], // 1 = 上漲, -1 = 下跌
+      };
+    });
 
-    let cur = new Date(minDate);
-    const end = new Date(maxDate);
-
-    while (cur <= end) {
-      const ds = cur.toISOString().slice(0, 10); // YYYY-MM-DD
-      if (!dateSet.has(ds)) {
-        missingDates.push(ds);
-      }
-      cur.setDate(cur.getDate() + 1);
-    }
-
-    // ===== K 線：漲紅跌綠、蠟燭變胖、影線無橫線 =====
-    const candle = {
-      x: dates,
-      open,
-      high,
-      low,
-      close,
-      type: "candlestick",
-      name: "K 線",
-      xaxis: "x",
-      yaxis: "y",
-      increasing: {
-        line: { color: "#ff5c5c", width: 1 },
-        fillcolor: "#ff5c5c",
+    const option = {
+      backgroundColor: "#0f172a",
+      animation: false,
+      tooltip: {
+        trigger: "axis",
+        axisPointer: {
+          type: "cross",
+          label: { backgroundColor: "#374151" }
+        }
       },
-      decreasing: {
-        line: { color: "#26e27a", width: 1 },
-        fillcolor: "#26e27a",
+      axisPointer: {
+        link: [{ xAxisIndex: [0, 1] }]
       },
-      width: 0.9,
-      whiskerwidth: 0,
-    };
-
-    // ===== 成交量（同樣紅漲綠跌） =====
-    const volUp   = [];
-    const volDown = [];
-
-    for (let i = 0; i < dates.length; i++) {
-      if (close[i] >= open[i]) {
-        volUp.push(volume[i]);
-        volDown.push(0);
-      } else {
-        volUp.push(0);
-        volDown.push(volume[i]);
-      }
-    }
-
-    const volUpTrace = {
-      x: dates,
-      y: volUp,
-      type: "bar",
-      name: "成交量 ↑",
-      xaxis: "x",
-      yaxis: "y2",
-      marker: { color: "#ff5c5c" },
-      opacity: 0.5,
-    };
-
-    const volDownTrace = {
-      x: dates,
-      y: volDown,
-      type: "bar",
-      name: "成交量 ↓",
-      xaxis: "x",
-      yaxis: "y2",
-      marker: { color: "#26e27a" },
-      opacity: 0.5,
-    };
-
-    // 預設看最近約 200 根（日 K）
-    const lastIdx   = dates.length - 1;
-    const startIdx  = Math.max(0, dates.length - 200);
-    const initialRange = [dates[startIdx], dates[lastIdx]];
-
-    // 判斷是否為手機
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
-
-    const layout = {
-      // ✅ 單指 / 滑鼠拖曳 = 平移（桌機＋手機一致）
-      dragmode: "pan",
-      showlegend: false,
-      xaxis: {
-        type: "date",
-        range: initialRange,
-        rangebreaks: missingDates.length ? [{ values: missingDates }] : [],
-        rangeslider: { visible: false },
-        rangeselector: {
-          buttons: [
-            { count: 3,  label: "3M", step: "month", stepmode: "backward" },
-            { count: 6,  label: "6M", step: "month", stepmode: "backward" },
-            { count: 1,  label: "1Y", step: "year",  stepmode: "backward" },
-            { count: 3,  label: "3Y", step: "year",  stepmode: "backward" },
-            { step: "all", label: "全部" },
-          ],
+      grid: [
+        {
+          left: 50,
+          right: 20,
+          top: 40,
+          height: "58%"      // 上面 K 線
         },
-      },
-      yaxis: {
-        domain: [0.3, 1],
-        title: "價格",
-        fixedrange: true,
-      },
-      yaxis2: {
-        domain: [0, 0.25],
-        title: "成交量",
-        fixedrange: true,
-      },
-      margin: isMobile
-        ? { t: 24, r: 12, b: 40, l: 48 }
-        : { t: 30, r: 20, b: 40, l: 60 },
-    };
-
-    const config = {
-      responsive: true,
-      // ✅ 桌機：啟用 scrollZoom；手機關掉避免跟頁面捲動打架
-      scrollZoom: !isMobile,
-      displaylogo: false,
-      displayModeBar: true,
-      // 保留 zoom / autoscale，只砍掉比較少用的工具
-      modeBarButtonsToRemove: [
-        "lasso2d",
-        "select2d",
-        "toggleSpikelines",
-        "hoverClosestCartesian",
-        "hoverCompareCartesian",
-        "toImage",
+        {
+          left: 50,
+          right: 20,
+          top: "70%",
+          height: "18%"      // 下面成交量
+        }
       ],
-      doubleClick: "reset",
+      xAxis: [
+        {
+          type: "category",
+          data: dates,
+          boundaryGap: false,
+          axisLine: { lineStyle: { color: "#4b5563" } },
+          axisLabel: { color: "#9ca3af" },
+          min: "dataMin",
+          max: "dataMax"
+        },
+        {
+          type: "category",
+          gridIndex: 1,
+          data: dates,
+          boundaryGap: false,
+          axisLine: { lineStyle: { color: "#4b5563" } },
+          axisLabel: { color: "#9ca3af" },
+          min: "dataMin",
+          max: "dataMax"
+        }
+      ],
+      yAxis: [
+        {
+          scale: true,
+          position: "right",
+          axisLine: { lineStyle: { color: "#4b5563" } },
+          axisLabel: { color: "#e5e7eb" },
+          splitLine: { lineStyle: { color: "#1f2937" } }
+        },
+        {
+          gridIndex: 1,
+          position: "right",
+          axisLine: { lineStyle: { color: "#4b5563" } },
+          axisLabel: {
+            color: "#9ca3af",
+            formatter: value => {
+              if (value >= 1e8) return (value / 1e8).toFixed(1) + "億";
+              if (value >= 1e4) return (value / 1e4).toFixed(1) + "萬";
+              return value;
+            }
+          },
+          splitLine: { show: false }
+        }
+      ],
+
+      // ✅ 手機雙指縮放 / 一指平移：靠 dataZoom
+      dataZoom: [
+        {
+          type: "inside",   // 內建：二指縮放 + 拖曳平移（手機 / 滑鼠都支援）
+          xAxisIndex: [0, 1],
+          minSpan: 5        // 最少顯示幾根 K 線，避免縮太誇張
+        },
+        {
+          type: "slider",   // 底下滑桿（桌機好用）
+          xAxisIndex: [0, 1],
+          height: 16,
+          bottom: 10
+        }
+      ],
+
+      series: [
+        {
+          name: "K 線",
+          type: "candlestick",
+          data: kData,
+          itemStyle: {
+            color: "#ff5c5c",          // 漲紅
+            color0: "#26e27a",         // 跌綠
+            borderColor: "#ff5c5c",
+            borderColor0: "#26e27a"
+          }
+        },
+        {
+          name: "成交量",
+          type: "bar",
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          data: volumeData,
+          itemStyle: {
+            color: params => {
+              // volumeData 的第三個值 1 / -1 決定顏色
+              return params.data.value[2] === 1 ? "#ff5c5c" : "#26e27a";
+            }
+          }
+        }
+      ]
     };
 
-    // ===== clamp + y-range 自動貼近高低點 =====
-    function clampRange(range) {
-      let [start, end] = range;
-      if (start < minDate) start = minDate;
-      if (end   > maxDate) end   = maxDate;
-      if (start > end) [start, end] = [end, start];
-      return [start, end];
-    }
+    chart.setOption(option);
 
-    // 價格 y 軸
-    function calcYRange(xRange) {
-      const [start, end] = xRange;
-      let min = Infinity;
-      let max = -Infinity;
-
-      for (let i = 0; i < dates.length; i++) {
-        const d = dates[i];
-        if (d >= start && d <= end) {
-          const lo = low[i];
-          const hi = high[i];
-          if (lo < min) min = lo;
-          if (hi > max) max = hi;
-        }
-      }
-
-      if (min === Infinity || max === -Infinity) return null;
-
-      const padding = (max - min) * 0.1 || 1;
-      return [min - padding, max + padding];
-    }
-
-    // 成交量 y2 軸（只看目前畫面範圍內的最大量）
-    function calcVolRange(xRange) {
-      const [start, end] = xRange;
-      let maxVol = 0;
-
-      for (let i = 0; i < dates.length; i++) {
-        const d = dates[i];
-        if (d >= start && d <= end) {
-          if (volume[i] > maxVol) maxVol = volume[i];
-        }
-      }
-
-      if (maxVol <= 0) return null;
-
-      return [0, maxVol * 1.2]; // 往上留 20% 空間
-    }
-
-    let internalUpdate = false;
-
-    Plotly.newPlot("kchart", [candle, volUpTrace, volDownTrace], layout, config)
-      .then(() => {
-        const initClamped = clampRange(initialRange);
-        const initY  = calcYRange(initClamped);
-        const initV2 = calcVolRange(initClamped);
-
-        if (initY && initV2) {
-          internalUpdate = true;
-          Plotly.relayout("kchart", {
-            "xaxis.range": initClamped,
-            "yaxis.range": initY,
-            "yaxis2.range": initV2,
-          }).then(() => { internalUpdate = false; });
-        }
-
-        const kDiv = document.getElementById("kchart");
-
-        kDiv.on("plotly_relayout", (ev) => {
-          if (internalUpdate) {
-            internalUpdate = false;
-            return;
-          }
-
-          let newRange = null;
-
-          if (ev["xaxis.range[0]"] && ev["xaxis.range[1]"]) {
-            newRange = [ev["xaxis.range[0]"], ev["xaxis.range[1]"]];
-          } else if (ev["xaxis.autorange"]) {
-            newRange = [minDate, maxDate];
-          } else {
-            return;
-          }
-
-          const clamped = clampRange(newRange);
-          const yRange  = calcYRange(clamped);
-          const v2Range = calcVolRange(clamped);
-          if (!yRange || !v2Range) return;
-
-          internalUpdate = true;
-          Plotly.relayout("kchart", {
-            "xaxis.range":  clamped,
-            "yaxis.range":  yRange,
-            "yaxis2.range": v2Range,
-          }).then(() => { internalUpdate = false; });
-        });
-      });
+    // 視窗大小變化時自動調整
+    window.addEventListener("resize", () => {
+      chart.resize();
+    });
   }
 </script>
 
 
 
 
-
-
   {% endif %}
+
+
+
+
+
+
+
 </body>
 </html>
