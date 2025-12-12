@@ -22,5 +22,4 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", views.home, name="home"),  # 首頁 → core.views.home
     path("k/", views.k_chart, name="k_chart"),  # 新增：K 線頁面
-    path("fundamental/", views.fundamental, name="fundamental"),  # 新增
 ]

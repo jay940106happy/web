@@ -3,10 +3,35 @@
 {% load static %}
 <head>
   <meta charset="UTF-8">
-  <title>首頁</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+  <title>個股分析儀表板</title>
   <link rel="stylesheet" href="{% static 'core/style.css' %}">
 </head>
 <body>
-  <h1>測試</h1>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">即時股價 + 基本面</p>
+        <h1>輸入代號就看 <span class="accent">K 線與財報</span></h1>
+        <form class="cta-form" method="get" action="{% url 'k_chart' %}">
+          <label>
+            <span>快速查詢</span>
+            <div class="input-row">
+              <input type="text" name="code" value="{{ default_code|default:'2330' }}" placeholder="2330 或 AAPL">
+              <button type="submit">開始分析</button>
+            </div>
+          </label>
+        </form>
+        <div class="featured">
+          <span class="featured-label">熱門：</span>
+          <div class="chips">
+            {% for item in featured %}
+              <a class="chip" href="{% url 'k_chart' %}?code={{ item.code }}">{{ item.label }} ({{ item.code }})</a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </header>
+  </div>
 </body>
 </html>
