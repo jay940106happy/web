@@ -8,18 +8,18 @@
     content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes"
   />
 
-  <title>個股數據</title>
+  <title>股票 K 線與財報分析</title>
   <link rel="stylesheet" href="{% static 'core/style.css' %}" />
 
-  <!-- 使用 ECharts 畫 K 線＋財報圖 -->
+  <!-- 使用 ECharts 繪製 K 線 / 財報圖表 -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 </head>
 <body>
-  <h1>個股數據</h1>
+  <h1>股票 K 線與財報分析</h1>
 
   <form method="get" action="{% url 'k_chart' %}">
     <label>
-      股票代號：
+      輸入股票代號：
       <input
         type="text"
         name="code"
@@ -30,7 +30,7 @@
     <button type="submit">查詢</button>
   </form>
 
-  {# ===== 上方專業頭部資訊（像 Yahoo 那一塊） ===== #}
+  {# ===== 上方：即時報價區 ===== #}
   {% if company_name and last_close %}
     <div class="quote-header">
       <div class="quote-top-row">
@@ -42,12 +42,12 @@
         {% if last_change %}
           {% if last_change > 0 %}
             <span class="change up">
-              ▲ {{ last_change|floatformat:2 }}
+              ▲{{ last_change|floatformat:2 }}
               ({{ last_change_pct|floatformat:2 }}%)
             </span>
           {% elif last_change < 0 %}
             <span class="change down">
-              ▼ {{ last_change|floatformat:2 }}
+              ▼{{ last_change|floatformat:2 }}
               ({{ last_change_pct|floatformat:2 }}%)
             </span>
           {% else %}
@@ -59,7 +59,7 @@
       </div>
       {% if last_date %}
         <div class="quote-date">
-          收盤價 · {{ last_date }}
+          最近收盤日： {{ last_date }}
         </div>
       {% endif %}
     </div>
@@ -70,16 +70,51 @@
   {% endif %}
 
   {% if not error %}
-    <h2>{{ symbol }} 日 K</h2>
-    <div id="kchart" style="width: 100%; height: 600px;"></div>
+    <h2>{{ symbol }} 日線 K</h2>
+    <div id="kchart" style="width: 100%; height: 620px;"></div>
 
-    <!-- ===== 下方：財報分析總區 ===== -->
+    <!-- ===== 技術摘要 ===== -->
     <section class="fund-section">
-      <!-- Tab 按鈕 -->
+      <div class="fund-grid">
+        <div class="fund-card">
+          <div class="fund-card-title">均線位置</div>
+          <ul class="stat-list">
+            <li><span>5 日</span><span id="ma-5">-</span></li>
+            <li><span>20 日</span><span id="ma-20">-</span></li>
+            <li><span>60 日</span><span id="ma-60">-</span></li>
+            <li><span>120 日</span><span id="ma-120">-</span></li>
+          </ul>
+        </div>
+        <div class="fund-card">
+          <div class="fund-card-title">成交動能</div>
+          <ul class="stat-list">
+            <li><span>近 20 日均量</span><span id="vol-avg">-</span></li>
+            <li><span>最新成交量</span><span id="vol-last">-</span></li>
+            <li><span>量能 vs 均量</span><span id="vol-ratio">-</span></li>
+          </ul>
+        </div>
+        <div class="fund-card">
+          <div class="fund-card-title">52 週區間</div>
+          <ul class="stat-list">
+            <li><span>低點</span><span id="low-52">-</span></li>
+            <li><span>高點</span><span id="high-52">-</span></li>
+            <li><span>區間位置</span><span id="range-52">-</span></li>
+          </ul>
+        </div>
+        <div class="fund-card">
+          <div class="fund-card-title">K 線重點</div>
+          <div id="tech-note" class="tech-note">計算中...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 下方：財報資訊與趨勢 ===== -->
+    <section class="fund-section">
+      <!-- Tab 切換 -->
       <div class="fund-tabs">
         <button class="fund-tab active" data-tab="snapshot">總覽</button>
         <button class="fund-tab" data-tab="ratios">財務比率</button>
-        <button class="fund-tab" data-tab="trend">財報趨勢圖</button>
+        <button class="fund-tab" data-tab="trend">財報趨勢</button>
       </div>
 
       <!-- Tab 內容：總覽 -->
@@ -120,7 +155,7 @@
           </div>
 
           <div class="fund-card">
-            <div class="fund-card-title">估值指標</div>
+            <div class="fund-card-title">估值與規模</div>
             <table>
               <tbody>
                 <tr>
@@ -152,7 +187,7 @@
           </div>
 
           <div class="fund-card">
-            <div class="fund-card-title">股利＆獲利能力</div>
+            <div class="fund-card-title">股利與獲利能力</div>
             <table>
               <tbody>
                 <tr>
@@ -164,7 +199,7 @@
                   </td>
                 </tr>
                 <tr>
-                  <td>盈餘配發率</td>
+                  <td>配發率</td>
                   <td>
                     {% if fund_info.payoutRatio %}
                       {{ fund_info.payoutRatio|floatformat:"2" }}
@@ -180,7 +215,7 @@
                   </td>
                 </tr>
                 <tr>
-                  <td>營益率</td>
+                  <td>營業利益率</td>
                   <td>
                     {% if fund_info.operatingMarginsPct %}
                       {{ fund_info.operatingMarginsPct|floatformat:"2" }} %
@@ -209,7 +244,7 @@
         </div>
       </div>
 
-      <!-- Tab 內容：財務比率（再整理一次重要比率） -->
+      <!-- Tab 內容：財務比率 / 體質 -->
       <div id="tab-ratios" class="fund-panel">
         <div class="fund-card wide">
           <div class="fund-card-title">財務體質 / 風險指標</div>
@@ -224,7 +259,7 @@
                 </td>
               </tr>
               <tr>
-                <td>營益率 (TTM)</td>
+                <td>營業利益率 (TTM)</td>
                 <td>
                   {% if fund_info.operatingMarginsPct %}
                     {{ fund_info.operatingMarginsPct|floatformat:"2" }} %
@@ -260,38 +295,91 @@
         </div>
       </div>
 
-      <!-- Tab 內容：財報趨勢圖 -->
+      <!-- Tab 內容：財報趨勢 -->
       <div id="tab-trend" class="fund-panel">
         <div class="metric-buttons">
           <span class="metric-label">指標：</span>
           <button class="metric-btn active" data-metric="revenue">營收</button>
           <button class="metric-btn" data-metric="operatingIncome">營業利益</button>
           <button class="metric-btn" data-metric="netIncome">淨利</button>
-          <button class="metric-btn" data-metric="grossMargin">毛利率 %</button>
-          <button class="metric-btn" data-metric="operatingMargin">營益率 %</button>
-          <button class="metric-btn" data-metric="netMargin">淨利率 %</button>
+          <button class="metric-btn" data-metric="grossMargin">毛利率%</button>
+          <button class="metric-btn" data-metric="operatingMargin">營益率%</button>
+          <button class="metric-btn" data-metric="netMargin">淨利率%</button>
           <button class="metric-btn" data-metric="operatingCashFlow">營業現金流</button>
+          <button class="metric-btn" data-metric="totalAssets">總資產</button>
+          <button class="metric-btn" data-metric="totalLiabilities">總負債</button>
+          <button class="metric-btn" data-metric="equity">股東權益</button>
         </div>
         <div id="fund-chart" style="width: 100%; height: 320px;"></div>
+
+        <div class="fund-card wide" style="overflow-x: auto; margin-top: 16px;">
+          <div class="fund-card-title">財報重點（最近四季）</div>
+          <div id="fund-table-wrapper"></div>
+        </div>
+
+        <div class="fund-card wide" style="margin-top: 16px;">
+          <div class="fund-card-title">資產負債結構</div>
+          <div id="balance-chart" style="width: 100%; height: 320px;"></div>
+        </div>
       </div>
     </section>
 
     <script>
-      // ===== 後端資料 =====
       const ohlc = {{ ohlc_json|default:"[]"|safe }};
       const fundamentals = {{ fundamentals_json|default:"{}"|safe }};
 
-      // ===== 1. K 線圖 (ECharts) =====
+      // ===== 共用格式化 =====
+      function formatNumberAbbrev(value) {
+        const v = Number(value);
+        if (!isFinite(v)) return "-";
+        const abs = Math.abs(v);
+        if (abs >= 1e12) return (v / 1e12).toFixed(2) + "兆";
+        if (abs >= 1e8) return (v / 1e8).toFixed(2) + "億";
+        if (abs >= 1e6) return (v / 1e6).toFixed(2) + "百萬";
+        if (abs >= 1e4) return (v / 1e4).toFixed(2) + "萬";
+        return v.toLocaleString();
+      }
+
+      function setText(id, text) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+      }
+
+      // ===== 1. K 線圖（含均線） =====
       if (ohlc.length > 0) {
         const container = document.getElementById("kchart");
         const chart = echarts.init(container, null, { renderer: "canvas" });
 
         const dates = ohlc.map(r => r.date);
+        const closes = ohlc.map(r => r.close);
         const kData = ohlc.map(r => [r.open, r.close, r.low, r.high]);
         const volumeData = ohlc.map((r, idx) => {
           const up = r.close >= r.open;
           return { value: [idx, r.volume, up ? 1 : -1] };
         });
+
+        function calcMA(day) {
+          const result = [];
+          for (let i = 0; i < closes.length; i++) {
+            if (i < day - 1) {
+              result.push(null);
+              continue;
+            }
+            const window = closes.slice(i - day + 1, i + 1);
+            const avg = window.reduce((a, b) => a + b, 0) / day;
+            result.push(Number(avg.toFixed(2)));
+          }
+          return result;
+        }
+
+        const ma5 = calcMA(5);
+        const ma20 = calcMA(20);
+        const ma60 = calcMA(60);
+        const ma120 = calcMA(120);
+
+        const lastYear = ohlc.slice(-252);
+        const high52 = lastYear.length ? Math.max(...lastYear.map(r => r.high)) : null;
+        const low52 = lastYear.length ? Math.min(...lastYear.map(r => r.low)) : null;
 
         const option = {
           backgroundColor: "#0f172a",
@@ -355,17 +443,8 @@
             }
           ],
           dataZoom: [
-            {
-              type: "inside",
-              xAxisIndex: [0, 1],
-              minSpan: 5
-            },
-            {
-              type: "slider",
-              xAxisIndex: [0, 1],
-              height: 16,
-              bottom: 10
-            }
+            { type: "inside", xAxisIndex: [0, 1], minSpan: 5 },
+            { type: "slider", xAxisIndex: [0, 1], height: 16, bottom: 10 }
           ],
           series: [
             {
@@ -377,7 +456,50 @@
                 color0: "#26e27a",
                 borderColor: "#ff5c5c",
                 borderColor0: "#26e27a"
+              },
+              markLine: {
+                symbol: "none",
+                label: {
+                  formatter: params => params.name + " " + Number(params.value).toFixed(2)
+                },
+                lineStyle: { color: "#f59e0b", width: 1.2, type: "dashed" },
+                data: [
+                  ...(high52 ? [{ name: "52W High", yAxis: high52 }] : []),
+                  ...(low52 ? [{ name: "52W Low", yAxis: low52 }] : [])
+                ]
               }
+            },
+            {
+              name: "MA5",
+              type: "line",
+              data: ma5,
+              smooth: true,
+              showSymbol: false,
+              lineStyle: { color: "#22d3ee", width: 1.5 }
+            },
+            {
+              name: "MA20",
+              type: "line",
+              data: ma20,
+              smooth: true,
+              showSymbol: false,
+              lineStyle: { color: "#f59e0b", width: 1.5 }
+            },
+            {
+              name: "MA60",
+              type: "line",
+              data: ma60,
+              smooth: true,
+              showSymbol: false,
+              lineStyle: { color: "#a78bfa", width: 1.5 }
+            },
+            {
+              name: "MA120",
+              type: "line",
+              data: ma120,
+              smooth: true,
+              showSymbol: false,
+              lineStyle: { color: "#34d399", width: 1.5 }
             },
             {
               name: "成交量",
@@ -395,190 +517,376 @@
 
         chart.setOption(option);
         window.addEventListener("resize", () => chart.resize());
+
+        // ===== 技術摘要數據 =====
+        const lastClose = closes[closes.length - 1];
+        function fmt(v) {
+          return v == null ? "-" : Number(v).toFixed(2);
+        }
+        setText("ma-5", fmt(ma5[ma5.length - 1]));
+        setText("ma-20", fmt(ma20[ma20.length - 1]));
+        setText("ma-60", fmt(ma60[ma60.length - 1]));
+        setText("ma-120", fmt(ma120[ma120.length - 1]));
+
+        const lastVolume = ohlc[ohlc.length - 1]?.volume ?? null;
+        const vol20 = ohlc.slice(-20).map(r => r.volume);
+        const avgVol20 = vol20.length ? vol20.reduce((a, b) => a + b, 0) / vol20.length : null;
+        setText("vol-avg", avgVol20 ? formatNumberAbbrev(avgVol20) : "-");
+        setText("vol-last", lastVolume ? formatNumberAbbrev(lastVolume) : "-");
+        setText(
+          "vol-ratio",
+          lastVolume && avgVol20 ? (lastVolume / avgVol20).toFixed(2) + "x" : "-"
+        );
+
+        setText("high-52", high52 ? fmt(high52) : "-");
+        setText("low-52", low52 ? fmt(low52) : "-");
+        if (high52 && low52 && lastClose) {
+          const pos = ((lastClose - low52) / (high52 - low52)) * 100;
+          setText("range-52", pos.toFixed(1) + "%");
+        } else {
+          setText("range-52", "-");
+        }
+
+        const notes = [];
+        if (lastClose && ma20[ma20.length - 1]) {
+          notes.push(lastClose >= ma20[ma20.length - 1] ? "站上 20 日均線" : "跌破 20 日均線");
+        }
+        if (ma20[ma20.length - 1] && ma60[ma60.length - 1]) {
+          notes.push(ma20[ma20.length - 1] >= ma60[ma60.length - 1] ? "多頭排列" : "空頭排列");
+        }
+        if (lastVolume && avgVol20) {
+          notes.push(lastVolume >= avgVol20 * 1.2 ? "量能放大" : "量能趨近均量");
+        }
+        setText("tech-note", notes.length ? notes.join(" · ") : "等待資料計算");
       }
 
-        // ===== 2. 財報趨勢圖：延後到第一次點 tab 再初始化 =====
-        let fundChart = null;          // 全域參考，之後 tab 切換 / resize 要用
-        let fundChartInited = false;   // 避免重複初始化
+      // ===== 2. 財報趨勢圖 / 表格 =====
+      let fundChart = null;
+      let fundChartInited = false;
+      let balanceChart = null;
+      let balanceChartInited = false;
 
-        function initFundChart() {
-        if (fundChartInited) return;                     // 已經 init 過就不用再來一次
+      function buildEquitySeries() {
+        if (!fundamentals || !fundamentals.series) return;
+        if (!fundamentals.series.totalAssets || !fundamentals.series.totalLiabilities) return;
+        const assetsMap = new Map(
+          fundamentals.series.totalAssets.map(p => [p.period, p.value])
+        );
+        const liabMap = new Map(
+          fundamentals.series.totalLiabilities.map(p => [p.period, p.value])
+        );
+        const periods = Array.from(new Set([...assetsMap.keys(), ...liabMap.keys()])).sort();
+        const equity = periods
+          .map(period => {
+            const a = assetsMap.get(period);
+            const l = liabMap.get(period);
+            if (a == null || l == null) return null;
+            return { period, value: a - l };
+          })
+          .filter(Boolean);
+        if (equity.length) {
+          fundamentals.series.equity = equity;
+        }
+      }
+      buildEquitySeries();
+
+      function initFundChart() {
+        if (fundChartInited) return;
         if (!fundamentals || !fundamentals.series) return;
 
         const fundChartEl = document.getElementById("fund-chart");
         if (!fundChartEl) return;
 
-        // ⚠️ 這裡才 init，確保 tab-trend 是顯示狀態
         fundChart = echarts.init(fundChartEl, null, { renderer: "canvas" });
         fundChartInited = true;
 
         const metricNameMap = {
-            revenue: "營收",
-            operatingIncome: "營業利益",
-            netIncome: "淨利",
-            grossMargin: "毛利率 %",
-            operatingMargin: "營益率 %",
-            netMargin: "淨利率 %",
-            operatingCashFlow: "營業現金流",
-            totalAssets: "總資產",
-            totalLiabilities: "總負債",
+          revenue: "營收",
+          operatingIncome: "營業利益",
+          netIncome: "淨利",
+          grossMargin: "毛利率%",
+          operatingMargin: "營益率%",
+          netMargin: "淨利率%",
+          operatingCashFlow: "營業現金流",
+          totalAssets: "總資產",
+          totalLiabilities: "總負債",
+          equity: "股東權益",
         };
 
-        // 數字縮寫成 萬 / 億 / 兆
-        function formatNumberAbbrev(value) {
-            const v = Number(value);
-            if (!isFinite(v)) return "-";
-            const abs = Math.abs(v);
-            if (abs >= 1e12) return (v / 1e12).toFixed(2) + "兆";
-            if (abs >= 1e8)  return (v / 1e8 ).toFixed(2) + "億";
-            if (abs >= 1e4)  return (v / 1e4 ).toFixed(2) + "萬";
-            return v.toLocaleString();
-        }
-
         function isPercentMetric(key) {
-            return key.toLowerCase().includes("margin");
+          return key.toLowerCase().includes("margin");
         }
 
         function renderMetric(key) {
-            const series = fundamentals.series[key];
-            if (!series || !series.length) {
+          const series = fundamentals.series[key];
+          if (!series || !series.length) {
             fundChart.clear();
             fundChart.setOption({
-                title: {
-                text: "此指標目前沒有資料",
+              title: {
+                text: "此指標暫無資料",
                 left: "center",
                 top: "middle",
                 textStyle: { color: "#9ca3af", fontSize: 14 },
-                },
+              },
             });
             return;
-            }
+          }
 
-            const x = series.map((p) => p.period);
-            const y = series.map((p) => p.value);
-            const percent = isPercentMetric(key);
+          const x = series.map((p) => p.period);
+          const y = series.map((p) => p.value);
+          const percent = isPercentMetric(key);
 
-            const option = {
-            backgroundColor: "transparent",
-            grid: {
-                left: 72,
-                right: 20,
-                top: 30,
-                bottom: 40,
-            },
-            tooltip: {
+          fundChart.setOption(
+            {
+              backgroundColor: "transparent",
+              grid: { left: 72, right: 20, top: 30, bottom: 40 },
+              tooltip: {
                 trigger: "axis",
                 axisPointer: { type: "line" },
                 valueFormatter: (v) => {
-                if (v == null) return "-";
-                return percent
-                    ? Number(v).toFixed(2) + "%"
-                    : formatNumberAbbrev(v);
+                  if (v == null) return "-";
+                  return percent ? Number(v).toFixed(2) + "%" : formatNumberAbbrev(v);
                 },
-            },
-            xAxis: {
+              },
+              xAxis: {
                 type: "category",
                 data: x,
                 axisLine: { lineStyle: { color: "#4b5563" } },
                 axisLabel: { color: "#9ca3af" },
-            },
-            yAxis: {
+              },
+              yAxis: {
                 type: "value",
                 scale: true,
                 min: (v) =>
-                percent
+                  percent
                     ? Math.floor(v.min - 1)
                     : v.min > 0
                     ? v.min * 0.9
                     : v.min * 1.1,
                 max: (v) =>
-                percent
+                  percent
                     ? Math.ceil(v.max + 1)
                     : v.max > 0
                     ? v.max * 1.1
                     : v.max * 0.9,
                 axisLine: { lineStyle: { color: "#4b5563" } },
                 axisLabel: {
-                color: "#e5e7eb",
-                formatter: (value) =>
+                  color: "#e5e7eb",
+                  formatter: (value) =>
                     percent
-                    ? Number(value).toFixed(0) + "%"
-                    : formatNumberAbbrev(value),
+                      ? Number(value).toFixed(0) + "%"
+                      : formatNumberAbbrev(value),
                 },
                 splitLine: { lineStyle: { color: "#1f2937" } },
-            },
-            series: [
+              },
+              series: [
                 {
-                name: metricNameMap[key] || key,
-                type: "line",
-                smooth: true,
-                showSymbol: true,
-                symbol: "circle",
-                symbolSize: 6,
-                lineStyle: { width: 2 },
-                areaStyle: { opacity: 0.08 },
-                data: y,
+                  name: metricNameMap[key] || key,
+                  type: "line",
+                  smooth: true,
+                  showSymbol: true,
+                  symbol: "circle",
+                  symbolSize: 6,
+                  lineStyle: { width: 2 },
+                  areaStyle: { opacity: 0.08 },
+                  data: y,
                 },
-            ],
-            };
-
-            fundChart.setOption(option, true);
+              ],
+            },
+            true
+          );
         }
 
-        // 預設先畫「營收」
         renderMetric("revenue");
 
-        // 指標切換按鈕（一定要在 init 之後綁）
         document.querySelectorAll(".metric-btn").forEach((btn) => {
-            btn.addEventListener("click", () => {
+          btn.addEventListener("click", () => {
             document
-                .querySelectorAll(".metric-btn")
-                .forEach((b) => b.classList.remove("active"));
+              .querySelectorAll(".metric-btn")
+              .forEach((b) => b.classList.remove("active"));
             btn.classList.add("active");
             renderMetric(btn.dataset.metric);
-            });
+          });
         });
 
-        // 視窗大小變化時，讓圖表跟著 resize
         window.addEventListener("resize", () => {
-            if (fundChart) fundChart.resize();
+          if (fundChart) fundChart.resize();
+          if (balanceChart) balanceChart.resize();
         });
+      }
+
+      function renderFundTable() {
+        const wrapper = document.getElementById("fund-table-wrapper");
+        if (!wrapper) return;
+        if (!fundamentals || !fundamentals.series) {
+          wrapper.textContent = "暫無財報資料";
+          return;
         }
 
-        // ===== 3. Tab 切換 =====
-        document.querySelectorAll(".fund-tab").forEach((tab) => {
-        tab.addEventListener("click", () => {
-            const target = tab.dataset.tab;
+        const metrics = [
+          { key: "revenue", label: "營收", percent: false },
+          { key: "operatingIncome", label: "營業利益", percent: false },
+          { key: "netIncome", label: "淨利", percent: false },
+          { key: "operatingCashFlow", label: "營業現金流", percent: false },
+          { key: "grossMargin", label: "毛利率%", percent: true },
+          { key: "operatingMargin", label: "營益率%", percent: true },
+          { key: "netMargin", label: "淨利率%", percent: true },
+        ];
 
-            document
+        const periodSet = new Set();
+        metrics.forEach((m) => {
+          const s = fundamentals.series[m.key] || [];
+          s.slice(-4).forEach((p) => periodSet.add(p.period));
+        });
+        const periods = Array.from(periodSet).sort().slice(-4);
+        if (!periods.length) {
+          wrapper.textContent = "暫無財報趨勢資料";
+          return;
+        }
+
+        function getVal(key, period) {
+          const series = fundamentals.series[key] || [];
+          const found = series.find((p) => p.period === period);
+          if (!found) return "-";
+          return key.toLowerCase().includes("margin")
+            ? Number(found.value).toFixed(2) + "%"
+            : formatNumberAbbrev(found.value);
+        }
+
+        let html = '<table class="fund-table"><thead><tr><th>指標</th>';
+        periods.forEach((p) => {
+          html += `<th>${p}</th>`;
+        });
+        html += "</tr></thead><tbody>";
+        metrics.forEach((m) => {
+          html += `<tr><td>${m.label}</td>`;
+          periods.forEach((p) => {
+            html += `<td>${getVal(m.key, p)}</td>`;
+          });
+          html += "</tr>";
+        });
+        html += "</tbody></table>";
+        wrapper.innerHTML = html;
+      }
+
+      function initBalanceChart() {
+        if (balanceChartInited) return;
+        const el = document.getElementById("balance-chart");
+        if (!el || !fundamentals || !fundamentals.series) return;
+
+        const assets = fundamentals.series.totalAssets || [];
+        const liabilities = fundamentals.series.totalLiabilities || [];
+        const equity = fundamentals.series.equity || [];
+        if (!assets.length && !liabilities.length) {
+          el.innerText = "暫無資產負債資料";
+          return;
+        }
+
+        const periodSet = new Set([
+          ...assets.map((p) => p.period),
+          ...liabilities.map((p) => p.period),
+          ...equity.map((p) => p.period),
+        ]);
+        const periods = Array.from(periodSet).sort();
+        const aMap = new Map(assets.map((p) => [p.period, p.value]));
+        const lMap = new Map(liabilities.map((p) => [p.period, p.value]));
+        const eMap = new Map(equity.map((p) => [p.period, p.value]));
+
+        const assetSeries = periods.map((p) => aMap.get(p) ?? null);
+        const liabSeries = periods.map((p) => lMap.get(p) ?? null);
+        const equitySeries = periods.map((p) => eMap.get(p) ?? null);
+
+        balanceChart = echarts.init(el, null, { renderer: "canvas" });
+        balanceChartInited = true;
+
+        balanceChart.setOption({
+          backgroundColor: "transparent",
+          legend: { textStyle: { color: "#e5e7eb" } },
+          tooltip: {
+            trigger: "axis",
+            valueFormatter: (v) => (v == null ? "-" : formatNumberAbbrev(v)),
+          },
+          grid: { left: 60, right: 20, top: 36, bottom: 40 },
+          xAxis: {
+            type: "category",
+            data: periods,
+            axisLine: { lineStyle: { color: "#4b5563" } },
+            axisLabel: { color: "#9ca3af" },
+          },
+          yAxis: {
+            type: "value",
+            scale: true,
+            axisLine: { lineStyle: { color: "#4b5563" } },
+            axisLabel: { color: "#e5e7eb", formatter: formatNumberAbbrev },
+            splitLine: { lineStyle: { color: "#1f2937" } },
+          },
+          series: [
+            {
+              name: "總資產",
+              type: "line",
+              smooth: true,
+              showSymbol: false,
+              areaStyle: { opacity: 0.08 },
+              data: assetSeries,
+            },
+            {
+              name: "總負債",
+              type: "line",
+              smooth: true,
+              showSymbol: false,
+              areaStyle: { opacity: 0.08 },
+              data: liabSeries,
+            },
+            {
+              name: "股東權益",
+              type: "line",
+              smooth: true,
+              showSymbol: false,
+              areaStyle: { opacity: 0.08 },
+              data: equitySeries,
+            },
+          ],
+        });
+      }
+
+      // ===== 3. Tab 切換 =====
+      document.querySelectorAll(".fund-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const target = tab.dataset.tab;
+
+          document
             .querySelectorAll(".fund-tab")
             .forEach((t) => t.classList.remove("active"));
-            tab.classList.add("active");
+          tab.classList.add("active");
 
-            document
+          document
             .querySelectorAll(".fund-panel")
             .forEach((p) => p.classList.remove("active"));
-            document.getElementById("tab-" + target).classList.add("active");
+          document.getElementById("tab-" + target).classList.add("active");
 
-            // 👉 當切到「財報趨勢圖」時，才初始化並強制 resize 一次
-            if (target === "trend") {
+          if (target === "trend") {
             initFundChart();
+            renderFundTable();
+            initBalanceChart();
             setTimeout(() => {
-                if (fundChart) fundChart.resize();
+              if (fundChart) fundChart.resize();
+              if (balanceChart) balanceChart.resize();
             }, 0);
-            }
+          }
         });
-        });
+      });
 
-        // 如果哪天你改成預設一進來就開「財報趨勢圖」，這裡也會自動幫你 init 一次
-        const activeTab = document.querySelector(".fund-tab.active");
-        if (activeTab && activeTab.dataset.tab === "trend") {
+      // 預設若已在「財報趨勢」頁，就立即初始化
+      const activeTab = document.querySelector(".fund-tab.active");
+      if (activeTab && activeTab.dataset.tab === "trend") {
         initFundChart();
+        renderFundTable();
+        initBalanceChart();
         setTimeout(() => {
-            if (fundChart) fundChart.resize();
+          if (fundChart) fundChart.resize();
+          if (balanceChart) balanceChart.resize();
         }, 0);
-        }
-
+      }
     </script>
   {% endif %}
 </body>
