@@ -360,3 +360,189 @@ def k_chart(request):
         ),
     }
     return render(request, "core/k_chart.html", context)
+
+
+def fundamental(request):
+    import yfinance as yf
+    import pandas as pd
+
+    raw_code = request.GET.get("code", "2330").strip()
+    code_upper = raw_code.upper()
+
+    # 嘗試各種 symbol（台股 / 美股）
+    candidates = []
+    if "." in code_upper:
+        candidates.append(code_upper)
+    else:
+        candidates.append(f"{code_upper}.TW")
+        candidates.append(f"{code_upper}.TWO")
+        candidates.append(code_upper)  # 萬一是美股代號
+
+    tkr = None
+    used_symbol = None
+
+    for sym in candidates:
+        try:
+            tmp = yf.Ticker(sym)
+            # 試著抓一下 info，沒炸就當作可用
+            info_test = getattr(tmp, "get_info", lambda: tmp.info)()
+            if info_test:  # 有拿到東西就用這個 symbol
+                tkr = tmp
+                used_symbol = sym
+                break
+        except Exception:
+            continue
+
+    # 完全找不到 symbol → 回報錯誤頁面
+    if tkr is None:
+        context = {
+            "raw_code": raw_code,
+            "symbol": raw_code,
+            "error": f"找不到 {raw_code} 的公司資訊（已嘗試：{', '.join(candidates)}）",
+            "company_name": None,
+            "income_q": None,
+            "bs_q": None,
+            "cf_q": None,
+            "key_stats": [],
+        }
+        return render(request, "core/fundamental.html", context)
+
+    # -------- 基本公司資料 --------
+    try:
+        info = getattr(tkr, "get_info", lambda: tkr.info)() or {}
+    except Exception:
+        info = {}
+
+    company_name = (
+        info.get("longName")
+        or info.get("shortName")
+        or raw_code
+    )
+    sector = info.get("sector")
+    industry = info.get("industry")
+    country = info.get("country")
+    currency = info.get("currency")
+    market_cap = info.get("marketCap")
+    trailing_pe = info.get("trailingPE")
+    forward_pe = info.get("forwardPE")
+    dividend_yield = info.get("dividendYield")
+    beta = info.get("beta")
+
+    def fmt_number(val):
+        if val in (None, "None"):
+            return "-"
+        try:
+            num = float(val)
+        except Exception:
+            return val
+
+        units = [(1e12, "兆"), (1e8, "億"), (1e4, "萬")]
+        for threshold, suffix in units:
+            if abs(num) >= threshold:
+                return f"{num / threshold:.2f}{suffix}"
+        return f"{num:,.0f}"
+
+    def fmt_percent(val):
+        if val in (None, "None"):
+            return "-"
+        try:
+            return f"{float(val) * 100:.2f}%"
+        except Exception:
+            return val
+
+    def fmt_value(val):
+        return "-" if val in (None, "None") else val
+
+    key_stats = [
+        ("市值", fmt_number(market_cap)),
+        ("幣別", fmt_value(currency)),
+        ("本益比 (TTM)", fmt_value(trailing_pe)),
+        ("預估本益比 (FWD)", fmt_value(forward_pe)),
+        ("殖利率", fmt_percent(dividend_yield)),
+        ("Beta", fmt_value(beta)),
+        ("產業", fmt_value(sector)),
+        ("國家", fmt_value(country)),
+    ]
+
+    # -------- DataFrame -> table 給 template --------
+    def df_to_table(df, max_rows=6, max_cols=8, transpose=True):
+        """
+        回傳：
+        {
+          "columns": [...],
+          "rows": [
+            {"period": "2024-09-30", "cells": [...]},
+            ...
+          ]
+        }
+        """
+        if df is None or len(df) == 0:
+            return None
+
+        df = df.copy()
+        if transpose:
+            df = df.T
+
+        df = df.iloc[:max_rows, :max_cols]
+
+        # index 變成期間字串
+        if hasattr(df.index, "strftime"):
+            periods = df.index.strftime("%Y-%m-%d").tolist()
+        else:
+            periods = df.index.map(str).tolist()
+
+        columns = [str(c) for c in df.columns]
+
+        rows = []
+        for idx, period in zip(df.index, periods):
+            row_vals = []
+            for c in df.columns:
+                v = df.at[idx, c]
+                try:
+                    if pd.isna(v):
+                        v = None
+                except Exception:
+                    pass
+                row_vals.append(v)
+            rows.append({"period": period, "cells": row_vals})
+
+        return {"columns": columns, "rows": rows}
+
+    # -------- 三張季報 --------
+    try:
+        inc_q = df_to_table(tkr.quarterly_income_stmt)
+    except Exception:
+        inc_q = None
+
+    try:
+        bs_q = df_to_table(tkr.quarterly_balance_sheet)
+    except Exception:
+        bs_q = None
+
+    try:
+        cf_q = df_to_table(tkr.quarterly_cashflow)
+    except Exception:
+        cf_q = None
+
+    # -------- 組 context 並一定要 return render --------
+    context = {
+        "raw_code": raw_code,
+        "symbol": used_symbol or raw_code,
+        "error": None,
+        "company_name": company_name,
+        "sector": sector,
+        "industry": industry,
+        "country": country,
+        "currency": currency,
+        "market_cap": market_cap,
+        "trailing_pe": trailing_pe,
+        "forward_pe": forward_pe,
+        "dividend_yield": dividend_yield,
+        "beta": beta,
+        "key_stats": key_stats,
+        "income_q": inc_q,
+        "bs_q": bs_q,
+        "cf_q": cf_q,
+    }
+
+    return render(request, "core/fundamental.html", context)
