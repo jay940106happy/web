@@ -3,11 +3,21 @@ from django.shortcuts import render
 
 
 def home(request):
-    return render(request, "core/index.html")
+    """Landing page that highlights the tools on this site."""
+    default_code = request.GET.get("code", "2330").strip()
+    featured = [
+        {"label": "台積電", "code": "2330"},
+        {"label": "台灣50", "code": "0050"},
+        {"label": "NVIDIA", "code": "NVDA"},
+        {"label": "Apple", "code": "AAPL"},
+        {"label": "Microsoft", "code": "MSFT"},
+    ]
 
-
-def home(request):
-    return render(request, "core/index.html")
+    return render(
+        request,
+        "core/index.html",
+        {"default_code": default_code, "featured": featured},
+    )
 
 
 def k_chart(request):
@@ -392,6 +402,7 @@ def fundamental(request):
             "income_q": None,
             "bs_q": None,
             "cf_q": None,
+            "key_stats": [],
         }
         return render(request, "core/fundamental.html", context)
 
@@ -415,6 +426,42 @@ def fundamental(request):
     forward_pe = info.get("forwardPE")
     dividend_yield = info.get("dividendYield")
     beta = info.get("beta")
+
+    def fmt_number(val):
+        if val in (None, "None"):
+            return "-"
+        try:
+            num = float(val)
+        except Exception:
+            return val
+
+        units = [(1e12, "兆"), (1e8, "億"), (1e4, "萬")]
+        for threshold, suffix in units:
+            if abs(num) >= threshold:
+                return f"{num / threshold:.2f}{suffix}"
+        return f"{num:,.0f}"
+
+    def fmt_percent(val):
+        if val in (None, "None"):
+            return "-"
+        try:
+            return f"{float(val) * 100:.2f}%"
+        except Exception:
+            return val
+
+    def fmt_value(val):
+        return "-" if val in (None, "None") else val
+
+    key_stats = [
+        ("市值", fmt_number(market_cap)),
+        ("幣別", fmt_value(currency)),
+        ("本益比 (TTM)", fmt_value(trailing_pe)),
+        ("預估本益比 (FWD)", fmt_value(forward_pe)),
+        ("殖利率", fmt_percent(dividend_yield)),
+        ("Beta", fmt_value(beta)),
+        ("產業", fmt_value(sector)),
+        ("國家", fmt_value(country)),
+    ]
 
     # -------- DataFrame -> table 給 template --------
     def df_to_table(df, max_rows=6, max_cols=8, transpose=True):
@@ -491,6 +538,7 @@ def fundamental(request):
         "forward_pe": forward_pe,
         "dividend_yield": dividend_yield,
         "beta": beta,
+        "key_stats": key_stats,
         "income_q": inc_q,
         "bs_q": bs_q,
         "cf_q": cf_q,
