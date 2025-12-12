@@ -3,10 +3,104 @@
 {% load static %}
 <head>
   <meta charset="UTF-8">
-  <title>首頁</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+  <title>個股分析儀表板</title>
   <link rel="stylesheet" href="{% static 'core/style.css' %}">
 </head>
 <body>
-  <h1>測試</h1>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">全程使用開源資料來源（yfinance）</p>
+        <h1>打造一站式的 <span class="accent">個股分析</span> 工作台</h1>
+        <p class="lede">輸入股票代號即可獲得即時 K 線、成交量、估值指標與財報趨勢圖，支援台股與美股。</p>
+        <div class="cta-row">
+          <form class="cta-form" method="get" action="{% url 'k_chart' %}">
+            <label>
+              <span>快速查看 K 線</span>
+              <div class="input-row">
+                <input type="text" name="code" value="{{ default_code|default:'2330' }}" placeholder="2330 或 AAPL">
+                <button type="submit">開啟圖表</button>
+              </div>
+            </label>
+          </form>
+          <form class="cta-form" method="get" action="{% url 'fundamental' %}">
+            <label>
+              <span>檢視財報摘要</span>
+              <div class="input-row">
+                <input type="text" name="code" value="{{ default_code|default:'2330' }}" placeholder="2330 或 AAPL">
+                <button type="submit" class="ghost">看基本面</button>
+              </div>
+            </label>
+          </form>
+        </div>
+        <div class="featured">
+          <span class="featured-label">熱門追蹤：</span>
+          <div class="chips">
+            {% for item in featured %}
+              <a class="chip" href="{% url 'k_chart' %}?code={{ item.code }}">{{ item.label }} ({{ item.code }})</a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="hero-card">
+        <div class="card-title">我們提供</div>
+        <ul>
+          <li>3 年日 K 線＋成交量，支援滑動縮放</li>
+          <li>公司資訊、估值與獲利能力指標</li>
+          <li>季報趨勢圖：營收、毛利率、營業現金流…</li>
+          <li>台股 / 美股自動判別 symbol</li>
+        </ul>
+      </div>
+    </header>
+
+    <section class="grid">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>股價與技術面</h2>
+          <p>即時抓取 3 年日 K、成交量，提供資料縮放、指標提示。</p>
+        </div>
+        <a class="panel-link" href="{% url 'k_chart' %}?code={{ default_code|default:'2330' }}">立即查看 &rarr;</a>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <h2>財報總覽</h2>
+          <p>季度損益、資產負債、現金流一次呈現，並整理關鍵比率。</p>
+        </div>
+        <a class="panel-link" href="{% url 'fundamental' %}?code={{ default_code|default:'2330' }}">開啟基本面 &rarr;</a>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <h2>資料來源</h2>
+          <p>無需自建資料庫，所有數據皆由 yfinance 即時取得。</p>
+        </div>
+        <div class="badge-row">
+          <span class="badge">開源 API</span>
+          <span class="badge">自動補全台股 / 美股代號</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="steps">
+      <h3>3 步驟完成個股分析</h3>
+      <div class="step-grid">
+        <div class="step">
+          <div class="step-num">01</div>
+          <h4>輸入代號</h4>
+          <p>支援台股上市 / 上櫃（自動補 .TW 或 .TWO）與美股 Ticker。</p>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <h4>查看 K 線</h4>
+          <p>拉開或縮放圖表，快速檢視趨勢與量價結構。</p>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <h4>檢視財報</h4>
+          <p>切換指標，掌握營收、毛利率、營業現金流等核心數據。</p>
+        </div>
+      </div>
+    </section>
+  </div>
 </body>
 </html>
