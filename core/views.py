@@ -361,6 +361,7 @@ def k_chart(request):
     }
     return render(request, "core/k_chart.html", context)
 
+
 def fundamental(request):
     import yfinance as yf
     import pandas as pd

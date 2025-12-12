@@ -11,6 +11,20 @@
   <div class="page-shell">
     <header class="hero">
       <div class="hero-text">
+        <p class="eyebrow">即時股價 + 基本面</p>
+        <h1>輸入代號就看 <span class="accent">K 線與財報</span></h1>
+        <form class="cta-form" method="get" action="{% url 'k_chart' %}">
+          
+          <label>
+            <span>快速查詢</span>
+            <div class="input-row">
+              <input type="text" name="code" value="{{ default_code|default:'2330' }}" placeholder="2330 或 AAPL">
+              <button type="submit">開始分析</button>
+            </div>
+          </label>
+        </form>
+        <div class="featured">
+          <span class="featured-label">熱門：</span>
         <p class="eyebrow">全程使用開源資料來源（yfinance）</p>
         <h1>打造一站式的 <span class="accent">個股分析</span> 工作台</h1>
         <p class="lede">輸入股票代號即可獲得即時 K 線、成交量、估值指標與財報趨勢圖，支援台股與美股。</p>
@@ -36,6 +50,7 @@
         </div>
         <div class="featured">
           <span class="featured-label">熱門追蹤：</span>
+          
           <div class="chips">
             {% for item in featured %}
               <a class="chip" href="{% url 'k_chart' %}?code={{ item.code }}">{{ item.label }} ({{ item.code }})</a>
@@ -43,6 +58,9 @@
           </div>
         </div>
       </div>
+
+    </header>
+
       <div class="hero-card">
         <div class="card-title">我們提供</div>
         <ul>
